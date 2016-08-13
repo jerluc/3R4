@@ -26,3 +26,7 @@ def shell(root):
 
 def main():
     shell()
+
+def login():
+    # TODO: Log the login event!
+    main()

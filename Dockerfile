@@ -12,6 +12,7 @@ MAINTAINER jerluc <me@jerluc.com>
     RUN emerge-webrsync
     RUN emerge -v vim
     RUN emerge -v openssh
+    RUN emerge -v dev-python/pip
 
     # Set up sshd
     RUN /usr/bin/ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N ""
@@ -19,17 +20,18 @@ MAINTAINER jerluc <me@jerluc.com>
     # SSH login fix. Otherwise user is kicked off after login
     RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
-    # Re-root everything to /tmp
+    # Setup esh/esh-login
     WORKDIR /tmp
-
-    # Setup 3R4 shell
     WORKDIR 3R4
     ADD . .
-    RUN python setup.py install
-    RUN echo "/usr/bin/3R4" >> /etc/shells
+    RUN pip install .
+    RUN cp /usr/bin/esh* /bin/
+    RUN echo "/bin/esh" >> /etc/shells
+    RUN echo "/bin/esh-login" >> /etc/shells
 
-    # Clean up our temporary datas
-    RUN rm -rf /tmp/*
+    # Clean up /tmp
+    WORKDIR /tmp
+    RUN rm -rf *
 
     # Reset the working directory to the root
     WORKDIR /
@@ -45,7 +47,7 @@ MAINTAINER jerluc <me@jerluc.com>
     RUN echo 'dev:n3w3r4' | chpasswd
 
     # Setup guest user (3R4)
-    RUN useradd -m -s /usr/bin/3R4 guest
+    RUN useradd -m -s /bin/esh-login guest
     RUN echo 'guest:n3w3r4' | chpasswd
 ### END users ###
 
