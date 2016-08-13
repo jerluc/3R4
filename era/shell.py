@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from getpass import getuser, getpass
-from socket import gethostname
+from socket import gethostname, gethostbyname
 from shlex import split as cmd_split
 
 from prompt_toolkit import prompt
@@ -13,6 +13,7 @@ from prompt_toolkit.history import InMemoryHistory
 from pygments.lexers.shell import BashLexer
 
 from era.env import Env
+from era.commands import PATH, expandvars
 
 
 SHELL_PATH = '/bin/esh'
@@ -24,7 +25,6 @@ DEFAULT_PROMPT_STYLE = style_from_dict({
     # Prompt
     Token.Username:   '#00cc00',
     Token.Path:       '#2200cc',
-    Token.DollarSign: '#ffffff',
     # Toolbar
     Token.Toolbar: '#ffffff bg:#333333',
 })
@@ -34,51 +34,19 @@ ADMIN_PROMPT_STYLE = style_from_dict({
     # User input
     Token:            '#ffffff',
     # Prompt
-    Token.Path:       '#cc0000',
-    Token.Hash:       '#cc0000',
+    Token.Username:   '#cc0000',
+    Token.Path:       '#2200cc',
     # Toolbar
     Token.Toolbar: '#ffffff bg:#333333',
 })
 
-
-def sudo(session, *_):
-    # TODO: Note that we're bypassing prompt_toolkit here because it
-    # looks wayyyy too hard to get it to not use '*' for passwords
-    try:
-        password = getpass('Password:')
-        if password == 'toor':
-            root_session = AdminSession(session.host)
-            root_session.run()
-        else:
-            print('Invalid password!')
-    except: # This should really only catch any Control-c's
-        print('')
-
-
-def env(session, *_):
-    for k, v in session.env.items():
-        print('%s=%s' % (k, v))
-
-
-def history(session, *_):
-    i = 1
-    for item in session.history.strings:
-        print('%5d %s' % (i, item))
-        i += 1
-
-
-# TODO: Refactor this to maybe be some kind of mixin?
-COMMANDS = {
-    'env': env,
-    'history': history,
-    'sudo': sudo
-}
-
-
 class ShellSession(object):
-    def __init__(self, username, host, starting_path=None,
+    def __init__(self, username, starting_path=None,
             prompt_style=DEFAULT_PROMPT_STYLE):
-        self.host = host
+        # TODO: Consider rewriting to pass in a fake host/IP
+        self.host = gethostname()
+        # TODO: Uhhh....wat
+        self.ip = gethostbyname(self.host)
         homedir = '/home/%s' % username
         self.env = Env(
             SHELL=SHELL_PATH,
@@ -105,13 +73,18 @@ class ShellSession(object):
     def prompt_tokens(self, cli):
         return [
             (Token.Username,   self.env.user),
-            (Token.Path,       ' ' + self.env.display_pwd),
-            (Token.DollarSign, ' $ '),
+            (Token.Path,       ' %s $ ' % self.env.display_pwd),
         ]
 
+    # TODO: Should I even use the toolbar?
     def toolbar_tokens(self, cli):
         return [
-            (Token.Toolbar, self.status)
+            (Token.Toolbar, '['),
+            (Token.Toolbar, ' '),
+            (Token.Toolbar, self.host),
+            (Token.Toolbar, '(%s)' % self.ip),
+            (Token.Toolbar, ' '),
+            (Token.Toolbar, ']'),
         ]
 
     # TODO: Use the lower-level CLI functionality rather than just the
@@ -138,14 +111,33 @@ class ShellSession(object):
     def do_command(self, cmd, *args):
         if cmd == 'exit':
             self.is_running = False
-        elif cmd in COMMANDS:
-            COMMANDS[cmd](self, *args)
+        elif cmd in PATH:
+            self.last_exit_code = PATH[cmd](self, *args)
         else:
             print('-esh: %s: command not found' % cmd)
 
+    def changeuser(self, user):
+        # TODO: Note that we're bypassing prompt_toolkit here because it
+        # looks wayyyy too hard to get it to not use '*' for passwords
+        password = getpass('Password:')
+        if user == 'root':
+            if password == 'toor':
+                root_session = AdminSession()
+                root_session.run()
+                return True
+            else:
+                return False
+        # TODO: Only start a new session if the user/pass works
+        elif True:
+            new_session = ShellSession(user)
+            new_session.run()
+            return True
+
     def run(self):
         while self.is_running:
+            # TODO: Handle malformed commands
             line = cmd_split(self.prompt())
+            line = [expandvars(self, s) for s in line]
             if len(line) > 0:
                 cmd = line[0]
                 args = line[1:]
@@ -153,21 +145,20 @@ class ShellSession(object):
 
 
 class AdminSession(ShellSession):
-    def __init__(self, host, starting_path=None):
-        super(self.__class__, self).__init__('root', host,
+    def __init__(self, starting_path=None):
+        super(self.__class__, self).__init__('root',
                 starting_path=starting_path,
                 prompt_style=ADMIN_PROMPT_STYLE)
 
     def prompt_tokens(self, cli):
         return [
-            (Token.Path,       self.env.display_pwd),
-            (Token.Hash, ' # '),
+            (Token.Username, 'root'),
+            (Token.Path,     ' %s # ' % self.env.display_pwd)
         ]
 
 
 def start(root):
     user = getuser()
-    host = gethostname()
-    session = ShellSession(user, host)
+    session = ShellSession(user)
     session.run()
 

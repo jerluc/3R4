@@ -3,6 +3,12 @@ class Env(object):
     def __init__(self, **kwargs):
         self.env = kwargs.copy()
 
+    def get(self, key, default=''):
+        return self.env.get(key, default)
+
+    def set(self, key, value):
+        self.env[key] = value
+
     @property
     def shell(self):
         return self.env['SHELL']
@@ -25,8 +31,11 @@ class Env(object):
 
     @property
     def path(self):
-        return self.env.get('PATH', '')
+        return self.get('PATH', '')
 
     def items(self):
-        return self.env.iteritems()
+        return self.env.items()
+
+    def as_dict(self):
+        return self.env.copy()
 
