@@ -12,8 +12,9 @@ from prompt_toolkit.token import Token
 from prompt_toolkit.history import InMemoryHistory
 from pygments.lexers.shell import BashLexer
 
-from era.env import Env
 from era.commands import PATH, expandvars
+from era.env import Env
+from era.fs import FS
 
 
 SHELL_PATH = '/bin/esh'
@@ -41,19 +42,21 @@ ADMIN_PROMPT_STYLE = style_from_dict({
 })
 
 class ShellSession(object):
-    def __init__(self, username, starting_path=None,
+    def __init__(self, username, fs, starting_path=None,
             prompt_style=DEFAULT_PROMPT_STYLE):
         # TODO: Consider rewriting to pass in a fake host/IP
         self.host = gethostname()
         # TODO: Uhhh....wat
         self.ip = gethostbyname(self.host)
         homedir = '/home/%s' % username
+        starting_path = starting_path if starting_path else homedir
         self.env = Env(
             SHELL=SHELL_PATH,
             USER=username,
-            PWD=starting_path if starting_path else homedir,
+            PWD=starting_path,
             HOME=homedir
         )
+        self.fs = fs
         self.manager = KeyBindingManager.for_prompt()
         self.manager.registry.add_binding(Keys.ControlC)(self.on_ctrlc)
         self.prompt_style = prompt_style
@@ -112,7 +115,11 @@ class ShellSession(object):
         if cmd == 'exit':
             self.is_running = False
         elif cmd in PATH:
-            self.last_exit_code = PATH[cmd](self, *args)
+            try:
+                self.last_exit_code = PATH[cmd](self, *args)
+            except Exception as e:
+                print('%s: %s' % (cmd, e))
+                self.last_exit_code = 255
         else:
             print('-esh: %s: command not found' % cmd)
 
@@ -122,7 +129,7 @@ class ShellSession(object):
         password = getpass('Password:')
         if user == 'root':
             if password == 'toor':
-                root_session = AdminSession()
+                root_session = AdminSession(self)
                 root_session.run()
                 return True
             else:
@@ -136,7 +143,11 @@ class ShellSession(object):
     def run(self):
         while self.is_running:
             # TODO: Handle malformed commands
-            line = cmd_split(self.prompt())
+            try:
+                line = cmd_split(self.prompt())
+            except Exception as e:
+                print('-esh: %s' % e)
+                continue
             line = [expandvars(self, s) for s in line]
             if len(line) > 0:
                 cmd = line[0]
@@ -145,8 +156,9 @@ class ShellSession(object):
 
 
 class AdminSession(ShellSession):
-    def __init__(self, starting_path=None):
+    def __init__(self, parent, starting_path=None):
         super(self.__class__, self).__init__('root',
+                parent.fs,
                 starting_path=starting_path,
                 prompt_style=ADMIN_PROMPT_STYLE)
 
@@ -159,6 +171,7 @@ class AdminSession(ShellSession):
 
 def start(root):
     user = getuser()
-    session = ShellSession(user)
+    fs = FS(root)
+    session = ShellSession(user, fs)
     session.run()
 

@@ -20,7 +20,7 @@ def shell(root):
     If ROOT is provided, the new session will consider this path to be
     the root of the presented file system. Otherwise, the current
     directory will be used."""
-    exit_code = era.shell.start(root)
+    exit_code = era.shell.start(os.path.join(CWD, root))
     sys.exit(exit_code)
 
 
