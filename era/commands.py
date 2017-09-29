@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from functools import wraps
 import os
 import os.path
-import sys
 import time
 
 
@@ -44,7 +42,7 @@ def expandpath(session, path):
 
 @command
 def su(session, *args):
-    '''Change user'''
+    """Change user"""
     user = args[0] if args else 'root'
     try:
         success = session.changeuser(user)
@@ -53,21 +51,21 @@ def su(session, *args):
         else:
             print('Permission denied (invalid password).')
             return 1
-    except: # This should really only catch any Control-c's
+    except:  # This should really only catch any Control-c's
         print('')
         return 1
 
 
 @command
 def hostname(session, *_):
-    '''Prints the current hostname'''
+    """Prints the current hostname"""
     print(session.host)
     return 0
 
 
 @command
 def echo(session, *args):
-    '''Prints a message'''
+    """Prints a message"""
     msg = ' '.join(args) if args else ''
     print(msg)
     return 0
@@ -75,7 +73,7 @@ def echo(session, *args):
 
 @command
 def env(session, *_):
-    '''Prints the environment variables'''
+    """Prints the environment variables"""
     for k, v in session.env.items():
         print('%s=%s' % (k, v))
     return 0
@@ -83,7 +81,7 @@ def env(session, *_):
 
 @command
 def history(session, *_):
-    '''Prints the command history'''
+    """Prints the command history"""
     i = 1
     for item in session.history.strings:
         print('%5d %s' % (i, item))
@@ -93,7 +91,7 @@ def history(session, *_):
 
 @command
 def cd(session, *args):
-    '''Changes current directory'''
+    """Changes current directory"""
     new_path = args[0] if args else '~'
     if new_path == '-':
         if session.env.get('OLDPWD'):
@@ -112,14 +110,14 @@ def cd(session, *args):
 
 @command
 def pwd(session, *_):
-    '''Prints the current directory'''
+    """Prints the current directory"""
     print(session.env.pwd)
     return 0
 
 
 @command
 def ls(session, *args):
-    '''Lists the contents of a directory'''
+    """Lists the contents of a directory"""
     path = args[0] if args else session.env.pwd
     path = expandpath(session, path)
     for f in session.fs.listdir(path):
@@ -129,7 +127,7 @@ def ls(session, *args):
 
 @command
 def mkdir(session, *args):
-    '''Creates a new directory'''
+    """Creates a new directory"""
     path = expandpath(session, args[0])
     session.fs.mkdir(path)
     return 0
@@ -137,7 +135,7 @@ def mkdir(session, *args):
 
 @command
 def touch(session, *args):
-    '''Creates a new file'''
+    """Creates a new file"""
     path = expandpath(session, args[0])
     session.fs.touch(path)
     return 0
@@ -145,7 +143,7 @@ def touch(session, *args):
 
 @command
 def rm(session, *args):
-    '''Removes a file or directory'''
+    """Removes a file or directory"""
     # TODO: This is horribly wrong!
     flags = []
     for a in args:
@@ -163,7 +161,7 @@ def rm(session, *args):
 
 @command
 def cat(session, *args):
-    '''Concatenate and print files'''
+    """Concatenate and print files"""
     for path in args:
         path = expandpath(session, path)
         with session.fs.read(path) as f:
@@ -174,17 +172,17 @@ def cat(session, *args):
 
 @command
 def sleep(session, *args):
-    '''Suspend execution for an interval of time'''
+    """Suspend execution for an interval of time"""
     try:
         time.sleep(int(args[0]))
         return 0
-    except: # Catch Control-c
+    except:  # Catch Control-c
         return 130
 
 
 @command
 def help(session, *_):
-    '''Prints a list of available shell commands'''
+    """Prints a list of available shell commands"""
     print('')
     print('Available shell commands:\n')
 
@@ -196,4 +194,3 @@ def help(session, *_):
         print(template % (cmd, desc))
     print('')
     return 0
-

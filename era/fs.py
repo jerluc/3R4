@@ -106,4 +106,3 @@ class FS(object):
             shutil.rmtree(path, ignore_errors)
         else:
             os.remove(path)
-

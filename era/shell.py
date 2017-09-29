@@ -30,7 +30,6 @@ DEFAULT_PROMPT_STYLE = style_from_dict({
     Token.Toolbar: '#ffffff bg:#333333',
 })
 
-
 ADMIN_PROMPT_STYLE = style_from_dict({
     # User input
     Token:            '#ffffff',
@@ -41,9 +40,9 @@ ADMIN_PROMPT_STYLE = style_from_dict({
     Token.Toolbar: '#ffffff bg:#333333',
 })
 
+
 class ShellSession(object):
-    def __init__(self, username, fs, starting_path=None,
-            prompt_style=DEFAULT_PROMPT_STYLE):
+    def __init__(self, username, fs, starting_path=None, prompt_style=DEFAULT_PROMPT_STYLE):
         # TODO: Consider rewriting to pass in a fake host/IP
         self.host = gethostname()
         # TODO: Uhhh....wat
@@ -157,10 +156,8 @@ class ShellSession(object):
 
 class AdminSession(ShellSession):
     def __init__(self, parent, starting_path=None):
-        super(self.__class__, self).__init__('root',
-                parent.fs,
-                starting_path=starting_path,
-                prompt_style=ADMIN_PROMPT_STYLE)
+        super(self.__class__, self).__init__('root', parent.fs, starting_path=starting_path,
+                                             prompt_style=ADMIN_PROMPT_STYLE)
 
     def prompt_tokens(self, cli):
         return [
@@ -174,4 +171,3 @@ def start(root):
     fs = FS(root)
     session = ShellSession(user, fs)
     session.run()
-
